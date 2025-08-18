@@ -130,7 +130,7 @@ class LoadConfigFiles {
             freeDisk: parseFloat(String(file.genericOrganData?.freeDisk?.get()).replace(' GB', '')),
             diskUsage: this.safeParsePercentage(file.genericOrganData?.diskUsage?.get()),
             timestamp: file.genericOrganData?.lastHealthTime?.get() || new Date().toISOString(),
-            macAddress: file.genericOrganData?.macAddress?.get() 
+            macAddress: file.genericOrganData?.macAddress?.get()
           };
 
           const payload = {
