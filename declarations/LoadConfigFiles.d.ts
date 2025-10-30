@@ -32,15 +32,28 @@ interface IData extends Model {
 declare class LoadConfigFiles {
     private static instance;
     private apiConnector;
+    private currentMacAddress;
+    private vmProcesses;
     private constructor();
     private safeParsePercentage;
+    getMacAddress(): string | null;
+    getVmProcesses(): any[];
+    private extractMacAddressFromFiles;
+    findAndSetMacAddress(files: any[]): Promise<string | null>;
     static getInstance(): LoadConfigFiles;
     initFiles(conn: FileSystem): Promise<void>;
     pushDataInMonitoringPlatform(apiConnector: ApiConnector, files: any[], hubStatus: IStatusHubObject): Promise<void>;
+    private listAllFiles;
+    private checkVmMonitoringFiles;
     private processVmMonitoringFile;
+    /** 📂 NOUVELLE MÉTHODE: Extraire et envoyer les processus VM au gestionnaire de processus */
+    private extractAndSendVmProcesses;
     private processOtherFiles;
     private sendConsolidatedData;
-    _loadConfigFiles(connect: spinal.FileSystem, fileName: string): Promise<any>;
+    _loadConfigFiles(connect: FileSystem, fileName: string): Promise<any>;
+    private displayPm2Processes;
+    private formatProcessUptime;
+    private getProcessStatusEmoji;
+    private inspectPm2DetailedStructure;
 }
-declare const _default: LoadConfigFiles;
-export default _default;
+export default LoadConfigFiles;

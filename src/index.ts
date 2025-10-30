@@ -21,47 +21,93 @@
  * with this file. If not, see
  * <http://resources.spinalcom.com/licenses.pdf>.
  */
-// import { ConfigFileModel, ConfigFile } from "spinal-lib-organ-monitoring"
-// console.log(ConfigFile);
+
 import LoadConfigFiles from "./LoadConfigFiles";
+import ProcessSocketManager from "./LoadProcess";
 import cron from 'node-cron';
-import { Lst, spinalCore, FileSystem } from "spinal-core-connectorjs";
+import { spinalCore, FileSystem } from "spinal-core-connectorjs";
 import config from './config';
-import ConfigFile from 'spinal-lib-organ-monitoring';
 
 async function main() {
+  const conn = spinalCore.connect(`${config.spinalConnector.protocol}://${config.spinalConnector.user}:${config.spinalConnector.password}@${config.spinalConnector.host}:${config.spinalConnector.port}/`);
 
-  let conn: FileSystem;
-    // connection string to connect to spinalhub
-    const protocol = process.env.SPINALHUB_PROTOCOL || "http";
+  // ✅ CORRECTION: Utiliser getInstance() correctement
+  const loaderConfigFiles = LoadConfigFiles.getInstance();
+  console.log("📚 Chargement des fichiers de configuration...");
+  try {
+    await loaderConfigFiles.initFiles(conn);
+    console.log("✅ Fichiers de métriques chargés");
+  } catch (error: any) {
+    console.error("❌ Erreur lors du chargement des métriques:", error?.message || error);
+  }
 
-    let connect_opt = `${protocol}://${config.spinalConnector.user}:${config.spinalConnector.password}@${config.spinalConnector.host}`;
-    if (config.spinalConnector.port !== undefined) {
-      connect_opt += `:${config.spinalConnector.port}/`;
-    }
-    // initialize the connection
-    conn = spinalCore.connect(connect_opt);
-    const fileName = process.env.ORGAN_NAME;
-    const type = process.env.ORGAN_TYPE;
-    const Ip = process.env.SPINALHUB_IP === undefined ? "" : process.env.SPINALHUB_IP
-    const RequestPort = process.env.REQUESTS_PORT === undefined ? "" : process.env.REQUESTS_PORT
-    if (fileName !== undefined && type !== undefined) {
-      await ConfigFile.init(
-        conn,
-        fileName,
-        type,
-        Ip,
-        parseInt(RequestPort)
-      );
-    }
+  // ✅ CORRECTION: Récupérer MAC et processus VM après l'initialisation
+  const macAddress = loaderConfigFiles.getMacAddress();
+  const vmProcesses = loaderConfigFiles.getVmProcesses();
 
-  //await LoadConfigFiles.initFiles(conn);
+  // ✅ Initialiser le gestionnaire de processus
+  const processManager = new ProcessSocketManager(config.monitoringApiConfig.socketUrl);
   
-  // Delay the start of the cron job by a certain amount of time
+  // ✅ Passer l'adresse MAC
+  if (macAddress) {
+    processManager.setMacAddress(macAddress);
+    console.log(`🔗 MAC Address passed to ProcessManager: ${macAddress}`);
+  } else {
+    console.warn("⚠️ No MAC address found in LoadConfigFiles");
+  }
+
+  // ✅ AJOUT: Passer les processus VM si disponibles
+  if (vmProcesses.length > 0) {
+    console.log(`📂 Transferring ${vmProcesses.length} VM processes to ProcessSocketManager`);
+    processManager.setVmProcesses(vmProcesses);
+  } else {
+    console.warn('⚠️ No VM processes found to transfer');
+  }
+
+  console.log("🔌 Initialisation du gestionnaire de processus...");
+  try {
+    await processManager.initialize();
+    await processManager.loadMonitoringFile();
+    console.log("✅ Gestionnaire de processus initialisé");
+    
+    // ✅ AJOUT: Envoyer immédiatement les processus VM après l'initialisation
+    if (vmProcesses.length > 0) {
+      console.log("📤 Sending initial VM processes via WebSocket...");
+      // Déclencher l'envoi des processus
+      await processManager.sendInitialProcessList();
+    }
+    
+  } catch (error: any) {
+    console.error("❌ Erreur lors de l'initialisation des processus:", error?.message || error);
+    console.log("🔄 L'application continue avec fonctionnalités limitées...");
+  }
+
+  // ✅ Cron job pour recharger les métriques ET les processus
   setTimeout(() => {
     cron.schedule('*/1 * * * *', async () => {
-      await LoadConfigFiles.initFiles(conn);
+      console.log("🔄 Cron job: Rechargement des métriques...");
+      try {
+        await loaderConfigFiles.initFiles(conn);
+        
+        // ✅ AMÉLIORATION: Mettre à jour ET envoyer les processus VM à chaque rechargement
+        const updatedVmProcesses = loaderConfigFiles.getVmProcesses();
+        if (updatedVmProcesses.length > 0) {
+          console.log(`🔄 Updating VM processes: ${updatedVmProcesses.length} processes`);
+          processManager.setVmProcesses(updatedVmProcesses);
+          
+          // ✅ AJOUT: Envoyer les processus mis à jour
+          await processManager.sendInitialProcessList();
+        }
+        
+      } catch (error: any) {
+        console.error("❌ Erreur dans le cron job:", error?.message || error);
+      }
     });
-  },60000); // 5 sec delay
-};
-main();
+    console.log("⏰ Cron job programmé pour les métriques toutes les minutes");
+  }, 60000);
+}
+
+main().catch((error: any) => {
+  console.error("❌ Erreur dans main():", error?.message || error);
+  process.exit(1);
+});

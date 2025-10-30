@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node --enable-source-maps index.js",
     "build": "rm -fr dist && tsc",
-    "start": "tsc && node dist/index.js",
+    "start": "node --enable-source-maps index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

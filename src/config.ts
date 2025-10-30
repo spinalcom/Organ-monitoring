@@ -24,12 +24,24 @@
 
 const config = {
   spinalConnector: {
-    protocol: process.env.SPINALHUB_PROTOCOL, // user id
-    user: process.env.SPINAL_USER_ID, // user id
-    password: process.env.SPINAL_PASSWORD, // user password
-    host: process.env.SPINALHUB_IP, // can be an ip address
-    port: process.env.SPINALHUB_PORT, // port
+    protocol: process.env.SPINALHUB_PROTOCOL || "http", // user id
+    user: process.env.SPINAL_USER_ID || "default_user", // user id
+    password: process.env.SPINAL_PASSWORD || "default_password", // user password
+    host: process.env.SPINALHUB_IP || "localhost", // can be an ip address
+    port: process.env.SPINALHUB_PORT || "7777", // port
   },
+  socketConfig: {
+    url: process.env.SOCKET_SERVER_URL || "http://localhost:3000",
+    options: {
+      transports: ['websocket', 'polling'],
+      autoConnect: true,
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: Infinity
+    }
+  },
+
   monitoringApiConfig: {
     TokenBosRegister: process.env.TOKEN_BOS_REGISTER,
     monitoring_url: process.env.MONITORING_URL,
@@ -38,7 +50,10 @@ const config = {
     organName: process.env.ORGAN_NAME,
     email: process.env.EMAIL,
     password: process.env.PASSWORD,
-    grant_type: process.env.GRANT_TYPE
+    grant_type: process.env.GRANT_TYPE,
+    processListUrl: process.env.PROCESS_LIST_URL || "http://146.59.157.197:3001/process-list",
+    restartProcessUrl: process.env.RESTART_PROCESS_URL || "http://146.59.157.197:3001/restart-process/",
+    socketUrl: process.env.SOCKET_IO_URL || "http://146.59.157.197:5053"
   }
 };
 export default config;

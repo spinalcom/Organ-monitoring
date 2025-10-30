@@ -48,9 +48,26 @@ export class ApiConnector {
    * @return {*}
    * @memberof ApiConnector
    */
-  public async get<T>(url: string) {
-    const config = await this.getConfig();
-    return axios.get<T>(url, config);
+  public async get<T>(url: string, headers?: any): Promise<{ data: T; status: number }> {
+    try {
+      const config = {
+        headers: {
+          'Accept': 'application/json',
+          ...headers
+        }
+      };
+      
+      console.log(`🌐 GET request to: ${url}`);
+      
+      const response = await axios.get(url, config);
+      
+      console.log(`✅ GET response status: ${response.status}`);
+      return { data: response.data, status: response.status };
+      
+    } catch (error: any) {
+      console.error(`❌ GET error to ${url}:`, error.response?.data || error.message);
+      throw error;
+    }
   }
 
   /**
